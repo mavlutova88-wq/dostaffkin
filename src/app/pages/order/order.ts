@@ -3,6 +3,7 @@ import { Header } from '../../header/header';
 import { DELIVERY_SIZES, DELIVERY_SPEEDS } from './order.config';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { UpperCasePipe } from '@angular/common';
+import { DeliveryApi } from '../../services/delivery-api';
 
 declare var ymaps: any;
 
@@ -25,19 +26,19 @@ export class Order {
   public orderId: any = signal(null);
   public calculationResult: any = signal(null);
 
-constructor(private formBuilder: FormBuilder) {
-  this.routeForm = this.formBuilder.group({
-    from: ['', Validators.required],
-    to: ['', Validators.required],
-    size: ['xs', Validators.required],
-    speed: ['regular', Validators.required]
-  });
-  this.orderForm = this.formBuilder.group({
-    name: ['', Validators.required],
-    phone: ['', [Validators.required]],
-    comment: ['']
-  });
-}
+  constructor(private formBuilder: FormBuilder, private deliveryApi: DeliveryApi) {
+    this.routeForm = this.formBuilder.group({
+      from: ['', Validators.required],
+      to: ['', Validators.required],
+      size: ['xs', Validators.required],
+      speed: ['regular', Validators.required]
+    });
+    this.orderForm = this.formBuilder.group({
+      name: ['', Validators.required],
+      phone: ['', [Validators.required]],
+      comment: ['']
+    });
+  }
   ngOnInit() {
     ymaps.ready(() => {
       this.map = new ymaps.Map('map', {
@@ -119,7 +120,7 @@ constructor(private formBuilder: FormBuilder) {
     this.mapRoute.model.events.add('requestfail', () => this.failedCalculation());
   }
 
-    private failedCalculation() {
+  private failedCalculation() {
     this.calculationResult.set(null);
     alert('Не удалось построить маршрут. Проверьте адреса и выбранные параметры.');
   }
@@ -147,8 +148,14 @@ constructor(private formBuilder: FormBuilder) {
       createdAt: new Date().toISOString()
     };
 
-    console.log(payload);
-    this.orderId.set(1);
+    this.deliveryApi.createDelivery(payload).subscribe((response) => {
+      if ('error' in response) {
+        alert(response.error);
+        return;
+      }
+
+      this.orderId.set(response.id);
+    });
   }
 }
 
